@@ -5,8 +5,10 @@ Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
 License:        GPLv3+
 URL:            https://github.com/Maomaokuxs/fedora-tweak-tool
-# 🌟 官方合规规范：必须明确声明 Source0
-Source0:        %{name}-%{version}.tar.gz
+
+# 🌟 Copr 终极魔法宏 1：
+# 指示云端的 rpkg 引擎，全自动把当前的 Git 仓库打包，并当作 Source0
+Source0:        {{{ git_dir_pack }}}
 
 BuildArch:      noarch
 Requires:       python3-pyside6
@@ -18,27 +20,25 @@ Requires:       grub2-tools
 以及针对多分辨率、重名变体全家桶的 GRUB2 主题智能解压、安全备份与自动编译。
 
 %prep
-# 🌟 官方合规规范：使用最干净的 %autosetup 流
-# rpkg 在打包时会自动将 Git 根目录压缩。这里让系统全自动解压并切入标准的构建工作区。
-%autosetup -n %{name}-%{version}
+# 🌟 Copr 终极魔法宏 2：
+# 配合上面的打包宏，在沙箱里全自动解压并精准进入源码目录！
+{{{ git_dir_setup_macro }}}
 
 %build
 # 纯 Python 脚本，无需编译
 
 %install
-# 建立合规的虚拟系统根目录
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/fedora-tweak-tool
 mkdir -p %{buildroot}%{_datadir}/applications
 
-# 🌟 官方合规规范：由于使用了标准的 %autosetup，此时解压出来的源码文件（app.py、main.ui）
-# 就雷打不动地平铺在当前的当前工作目录下！直接用当前相对路径拷贝，绝对万无一失！
+# 魔法宏已经帮我们把环境彻底铺平了，直接放心大胆地平铺拷贝！
 cp app.py %{buildroot}%{_bindir}/fedora-tweak-tool
 chmod +x %{buildroot}%{_bindir}/fedora-tweak-tool
 
 cp main.ui %{buildroot}%{_datadir}/fedora-tweak-tool/main.ui
 
-# 规范化定向输出桌面启动图标
+# 桌面图标
 echo "[Desktop Entry]" > %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Type=Application" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Name=Fedora Tweak Tool" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
@@ -55,4 +55,4 @@ echo "Categories=System;Settings;" >> %{buildroot}%{_datadir}/applications/fedor
 
 %changelog
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.0.0-1
-- 回归标准 %autosetup 构建流，彻底对齐 Copr 自动化解压目录，实现无损编译。
+- 启用 Copr 官方 rpkg 魔法宏，实现全自动 Git 源码打包与沙箱解压。
