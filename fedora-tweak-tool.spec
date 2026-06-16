@@ -1,5 +1,5 @@
 Name:           fedora-tweak-tool
-Version:        1.1.0
+Version:        1.1.1
 Release:        1%{?dist}
 Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
