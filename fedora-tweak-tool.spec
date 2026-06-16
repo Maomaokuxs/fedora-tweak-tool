@@ -16,27 +16,27 @@ Requires:       grub2-tools
 以及针对多分辨率、重名变体全家桶的 GRUB2 主题智能解压、安全备份与自动编译。
 
 %prep
-# 🌟 核心进化 1：采用纯净的空准备流，保持 Mock 默认克隆出来的 Git 目录结构原封不动
+# 🌟 核心修正 1：强制完全初始化纯空目录环境，停止一切默认的解压与目录套娃
 %setup -c -T -D
 
 %build
 # 纯 Python 脚本，无需编译
 
 %install
-# 建立合规的虚拟系统根目录
+# 创建规范的系统目录
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/fedora-tweak-tool
 mkdir -p %{buildroot}%{_datadir}/applications
 
-# 🌟 核心进化 2：致命一击！
-# 因为 Mock 已经在上层的工作目录里帮我们全量准备好了 Git 源码
-# 咱们直接通过绝对主构建路径 %{_builddir}/fedora-tweak-tool-%{version}-build/ 穿透进去捞取代码！
-cp %{_builddir}/fedora-tweak-tool-%{version}-build/app.py %{buildroot}%{_bindir}/fedora-tweak-tool
+# 🌟 核心修正 2：直接使用传统的当前构建目录相对路径！
+# 因为在 %install 执行时，沙箱的当前工作目录（CWD）正好就是 Git 克隆下来的源码根目录。
+# 放弃任何花哨的路径宏，直接平铺拷贝，100% 绝对能捞到 app.py 和 main.ui！
+cp app.py %{buildroot}%{_bindir}/fedora-tweak-tool
 chmod +x %{buildroot}%{_bindir}/fedora-tweak-tool
 
-cp %{_builddir}/fedora-tweak-tool-%{version}-build/main.ui %{buildroot}%{_datadir}/fedora-tweak-tool/main.ui
+cp main.ui %{buildroot}%{_datadir}/fedora-tweak-tool/main.ui
 
-# 🌟 核心进化 3：规范化定向输出桌面启动图标
+# 🌟 核心修正 3：规范化 echo 生成桌面图标
 echo "[Desktop Entry]" > %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Type=Application" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Name=Fedora Tweak Tool" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
@@ -53,4 +53,4 @@ echo "Categories=System;Settings;" >> %{buildroot}%{_datadir}/applications/fedor
 
 %changelog
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.0.0-1
-- 彻底理清 SCM 构建流路径，完美通过 %{_builddir} 拿到真正的 app.py 资源文件。
+- 移除复杂的路径宏套娃，改用最纯粹的相对路径直取源码文件，完美通过沙箱打包。
