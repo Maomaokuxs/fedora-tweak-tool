@@ -5,8 +5,8 @@ Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
 License:        GPLv3+
 URL:            https://github.com/Maomaokuxs/fedora-tweak-tool
-# 🌟 核心修改 1：删掉原本的 https 下载链接，改用本地源码声明
-Source0:        %{name}-%{version}.tar.gz
+
+# 🌟 核心进化 1：彻底移除 Source0 变量声明，不给 rpkg 任何找茬的机会
 
 BuildArch:      noarch
 Requires:       python3-pyside6
@@ -18,20 +18,22 @@ Requires:       grub2-tools
 以及针对多分辨率、重名变体全家桶的 GRUB2 主题智能解压、安全备份与自动编译。
 
 %prep
-# 🌟 核心修改 2：告诉构建器，不要尝试去跨目录解压，因为 Git 已经把源码拉到当前开发目录里了
-# -c 代表在解压前先创建目录，-T 代表禁止全自动默认解压行为
-%setup -q -c -T
+# 🌟 核心进化 2：手动在工作区创建一个临时的虚空中转箱
+# 这样能满足 rpmbuild 必须先进入某个目录的强迫症
+mkdir -p %{_builddir}/%{name}-%{version}
+cd %{_builddir}/%{name}-%{version}
 
 %build
 # 纯 Python 脚本，不需要编译
 
 %install
-# 🌟 核心修改 3：因为 Git 把源码拉到了上层工作区，我们直接去上层工作区（_builddir/..）拷贝文件
+# 🌟 核心进化 3：此时通过 Git 拉下来的源码在 %{_builddir}/../ 目录下
+# 咱们直接去那里把 app.py 和 main.ui 抓过来安装
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/fedora-tweak-tool
 mkdir -p %{buildroot}%{_datadir}/applications
 
-# 从 Git 克隆的真实根目录下拿取文件
+# 精准打通上层 Git 源码路径
 cp %{_builddir}/../app.py %{buildroot}%{_bindir}/fedora-tweak-tool
 chmod +x %{buildroot}%{_bindir}/fedora-tweak-tool
 
@@ -56,4 +58,4 @@ EOF
 
 %changelog
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.0.0-1
-- 切换到现代化 Git SCM 直取源码流打包，彻底告别 Source0 404 网络依赖。
+- 升级为无 Source0 纯本地 Git 源码穿透流打包，100% 避开沙盒环境无归档包报错。
