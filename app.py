@@ -67,7 +67,7 @@ class FedoraTweakApp:
         self.grub_theme_combo = self.window.findChild(QComboBox, "grub_theme_combo")
         self.grub_refresh_btn = self.window.findChild(QPushButton, "grub_refresh_btn")
 
-        # 显卡检测与驱动管理组件
+        # 🌟 显卡检测与驱动管理组件（对应你的 main.ui 面板）
         self.gpu_info_lbl = self.window.findChild(QLabel, "gpu_info_lbl")
         self.driver_status_lbl = self.window.findChild(QLabel, "driver_status_lbl")
         self.gpu_action_btn = self.window.findChild(QPushButton, "gpu_action_btn")
@@ -77,7 +77,7 @@ class FedoraTweakApp:
         # =====================================================================
         self.system_themes_root = "/usr/share/grub/themes" 
         
-        # 🌟 重新设计的硬件状态机标志位
+        # 重新设计的硬件状态机标志位
         self.detected_vendor = "Unknown"  # "NVIDIA", "AMD", "Intel", "Unknown"
         self.nvidia_driver_installed = False
         self.vaapi_perfect = False       # 标记硬件加速是否已经处于完美状态
@@ -168,7 +168,7 @@ class FedoraTweakApp:
                     driver_status_text = "⚠️ 运行受限：检测到 NVIDIA 显卡，但正运行于开源驱动下。3D 性能极差且无硬件加速！"
 
             elif self.detected_vendor in ["AMD", "Intel"]:
-                # 开源栈检查：看 freeworld 版的高级编解码驱动是否把官方阉割版给顶替掉了
+                # 开源栈检查：看 freeworld 版的高级编解码驱动是否把官方限制版给顶替掉了
                 freeworld_check = subprocess.run(["rpm", "-q", "mesa-va-drivers-freeworld"], capture_output=True, text=True)
                 if freeworld_check.returncode == 0:
                     self.vaapi_perfect = True
@@ -226,7 +226,7 @@ class FedoraTweakApp:
         elif self.detected_vendor in ["AMD", "Intel"]:
             print(f"[DEBUG 驱动] 正在为 {self.detected_vendor} 替换官方闭源硬解全家桶包...")
             
-            # 引入 RPM Fusion 自由源 ➡️ 执行 DNF5 标志性的 swap 事务，用满血 freeworld 顶替官方阉割版
+            # 执行 DNF5 标志性的 swap 事务，用满血 freeworld 顶替官方包，无损且不会由于依赖导致桌面崩溃
             shell_script = """
             dnf5 install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-44.noarch.rpm || true
             dnf5 update -y --refresh
@@ -236,7 +236,6 @@ class FedoraTweakApp:
             """
             success_msg = f"🎉 恭喜！{self.detected_vendor} 开源全格式多媒体硬解加速已彻底激活！OBS 录屏与 4K 播放全面解锁底层硬件加速。"
 
-        # 调起官方认证弹窗
         QMessageBox.information(self.window, "准备整备环境", "工具即将拉起官方 Polkit 授权。由于需要同步云端镜像站下载多媒体组件，请在输入密码后安心等候几分钟。")
         
         cmd = ["pkexec", "sh", "-c", shell_script]
@@ -357,8 +356,8 @@ class FedoraTweakApp:
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # 🌟 专门针对 Wayland 环境的破壁代码：强行绑定任务栏图标！
-    # 名字必须和我们在 /usr/share/applications/ 里创建的 .desktop 文件名一模一样
+    
+    # 🌟 破壁钢印：强行消除 Wayland 任务栏图标分离与快捷方式空转的鬼影问题
     app.setDesktopFileName("fedora-tweak-tool.desktop")
     
     tweak_app = FedoraTweakApp()

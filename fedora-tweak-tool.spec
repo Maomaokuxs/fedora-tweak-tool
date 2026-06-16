@@ -58,7 +58,7 @@ echo "StartupWMClass=fedora-tweak-tool" >> %{buildroot}%{_datadir}/applications/
 
 %changelog
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.1.1-1
-- 尝试修复快捷方式与窗口管理的断层
+- 修复 Wayland (Niri/KDE) 环境下的任务栏图标分离瑕疵，补齐 StartupWMClass 映射。
 
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.1.0-1
 - 【重磅】新增显卡硬件加速智能面板，支持探知 Intel/AMD/NVIDIA 显卡并一键部署 RPM Fusion 满血编解码环境。
