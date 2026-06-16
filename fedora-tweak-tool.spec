@@ -37,7 +37,7 @@ mkdir -p %{buildroot}%{_datadir}/applications
 cp app.py %{buildroot}%{_bindir}/fedora-tweak-tool
 cp main.ui %{buildroot}%{_datadir}/fedora-tweak-tool/main.ui
 
-# 桌面图标
+# 规范化定向输出桌面启动图标
 echo "[Desktop Entry]" > %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Type=Application" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Name=Fedora Tweak Tool" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
@@ -46,6 +46,9 @@ echo "Exec=fedora-tweak-tool" >> %{buildroot}%{_datadir}/applications/fedora-twe
 echo "Icon=system-run" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Terminal=false" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Categories=System;Settings;" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
+# 🌟 彻底消灭鬼影窗口的双保险
+echo "StartupNotify=true" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
+echo "StartupWMClass=fedora-tweak-tool" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 
 %files
 # 无视 Git 原生权限，落地强制赋予 0755
@@ -54,6 +57,9 @@ echo "Categories=System;Settings;" >> %{buildroot}%{_datadir}/applications/fedor
 %{_datadir}/applications/fedora-tweak-tool.desktop
 
 %changelog
+* Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.1.1-1
+- 尝试修复快捷方式与窗口管理的断层
+
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.1.0-1
 - 【重磅】新增显卡硬件加速智能面板，支持探知 Intel/AMD/NVIDIA 显卡并一键部署 RPM Fusion 满血编解码环境。
 - 【重磅】合并 GRUB 主题应用按钮，支持“外部解压安装”与“本地已存主题一键切换”双模智能调度。

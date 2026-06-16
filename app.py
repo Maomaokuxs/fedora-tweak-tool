@@ -357,6 +357,10 @@ class FedoraTweakApp:
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    # 🌟 专门针对 Wayland 环境的破壁代码：强行绑定任务栏图标！
+    # 名字必须和我们在 /usr/share/applications/ 里创建的 .desktop 文件名一模一样
+    app.setDesktopFileName("fedora-tweak-tool.desktop")
+    
     tweak_app = FedoraTweakApp()
     tweak_app.window.show()
     sys.exit(app.exec())
