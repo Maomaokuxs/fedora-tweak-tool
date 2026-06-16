@@ -5,10 +5,7 @@ Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
 License:        GPLv3+
 URL:            https://github.com/Maomaokuxs/fedora-tweak-tool
-
-# 🌟 Copr 终极魔法宏 1：
-# 指示云端的 rpkg 引擎，全自动把当前的 Git 仓库打包，并当作 Source0
-Source0:        {{{ git_dir_pack }}}
+Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      noarch
 Requires:       python3-pyside6
@@ -20,25 +17,25 @@ Requires:       grub2-tools
 以及针对多分辨率、重名变体全家桶的 GRUB2 主题智能解压、安全备份与自动编译。
 
 %prep
-# 🌟 Copr 终极魔法宏 2：
-# 配合上面的打包宏，在沙箱里全自动解压并精准进入源码目录！
-{{{ git_dir_setup_macro }}}
+# 回归标准的 %autosetup，配合 Copr 云端魔法宏全自动解压
+%autosetup -n %{name}-%{version}
 
 %build
-# 纯 Python 脚本，无需编译
+# 🌟 核心进化 1：在编译构建阶段，强行在 app.py 的第一行插上 Shebang 蛇头
+# 这样能100%%保证打包出来的文件绝对不会被系统误当成 Bash 脚本去啃！
+sed -i '1i #!/usr/bin/python3' app.py
 
 %install
+# 建立合规的系统目录
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/fedora-tweak-tool
 mkdir -p %{buildroot}%{_datadir}/applications
 
-# 魔法宏已经帮我们把环境彻底铺平了，直接放心大胆地平铺拷贝！
+# 拷贝核心文件
 cp app.py %{buildroot}%{_bindir}/fedora-tweak-tool
-chmod +x %{buildroot}%{_bindir}/fedora-tweak-tool
-
 cp main.ui %{buildroot}%{_datadir}/fedora-tweak-tool/main.ui
 
-# 桌面图标
+# 规范化定向输出桌面启动图标
 echo "[Desktop Entry]" > %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Type=Application" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 echo "Name=Fedora Tweak Tool" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
@@ -49,10 +46,12 @@ echo "Terminal=false" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.
 echo "Categories=System;Settings;" >> %{buildroot}%{_datadir}/applications/fedora-tweak-tool.desktop
 
 %files
-%{_bindir}/fedora-tweak-tool
+# 🌟 核心进化 2：使用 %%attr 魔法属性，强行指定安装后该文件的权限为 0755（可执行）
+# 这样无论 Git 仓库里这个文件是什么权限，用户通过 DNF 安装完瞬间，它就自带灵魂！
+%attr(0755, root, root) %{_bindir}/fedora-tweak-tool
 %{_datadir}/fedora-tweak-tool/main.ui
 %{_datadir}/applications/fedora-tweak-tool.desktop
 
 %changelog
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.0.0-1
-- 启用 Copr 官方 rpkg 魔法宏，实现全自动 Git 源码打包与沙箱解压。
+- 焊入 Shebang 蛇头并使用 %%attr(0755) 强切文件权限，实现到手一键即用完全体。
