@@ -26,12 +26,17 @@
         </item>
         <item>
          <property name="text">
+          <string>鼠标指针样式</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
           <string>GRUB 配置</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>显卡驱动</string>
+          <string>显卡与硬件加速</string>
          </property>
         </item>
        </widget>
@@ -39,7 +44,7 @@
       <item>
        <widget class="QStackedWidget" name="content_stack">
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="page">
          <widget class="QWidget" name="layoutWidget">
@@ -120,14 +125,110 @@
           </layout>
          </widget>
         </widget>
+        <widget class="QWidget" name="page_4">
+         <widget class="QWidget" name="">
+          <property name="geometry">
+           <rect>
+            <x>10</x>
+            <y>29</y>
+            <width>601</width>
+            <height>501</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <item>
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>选择鼠标主题 ：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="cursor_path_edit"/>
+             </item>
+             <item>
+              <widget class="QPushButton" name="cursor_browse_btn">
+               <property name="text">
+                <string>选择主题文件</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <item>
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>当前主题：</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="cursor_theme_combo"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QLabel" name="cursor_preview_lbl">
+             <property name="text">
+              <string>TextLabel</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="verticalSpacer_4">
+             <property name="orientation">
+              <enum>Qt::Orientation::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>40</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <item>
+              <spacer name="horizontalSpacer_4">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="cursor_apply_btn">
+               <property name="text">
+                <string>应用</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </widget>
         <widget class="QWidget" name="page_2">
          <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
             <x>10</x>
-            <y>0</y>
+            <y>20</y>
             <width>601</width>
-            <height>531</height>
+            <height>511</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -227,13 +328,13 @@
          </widget>
         </widget>
         <widget class="QWidget" name="page_3">
-         <widget class="QWidget" name="">
+         <widget class="QWidget" name="layoutWidget">
           <property name="geometry">
            <rect>
             <x>10</x>
-            <y>20</y>
+            <y>40</y>
             <width>601</width>
-            <height>501</height>
+            <height>481</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">

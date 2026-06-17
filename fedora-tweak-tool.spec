@@ -1,5 +1,5 @@
 Name:           fedora-tweak-tool
-Version:        1.1.1
+Version:        1.1.2
 Release:        1%{?dist}
 Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
@@ -57,6 +57,11 @@ echo "StartupWMClass=fedora-tweak-tool" >> %{buildroot}%{_datadir}/applications/
 %{_datadir}/applications/fedora-tweak-tool.desktop
 
 %changelog
+* Wed Jun 17 2026 biyuan <biyuan@fedoraproject.org> - 1.1.2-1
+- 新增用户态鼠标光标样式管理面板，打通本地主题一键就地切换选单与 KDE 6 / KWin 原生级热刷新接口。
+- 攻克 Xcursor 二进制协议，首创基于 TOC 导航的高清图像块贪婪提取机制，实现 2x2（标准/手型/工字/忙碌）视网膜级四宫格阵列画布预览。
+- 实现外部鼠标主题压缩包智能防套娃解压、规整清洗导入及三维一体（XWayland/GTK/GSettings）无损刷新部署。
+
 * Tue Jun 16 2026 biyuan <biyuan@fedoraproject.org> - 1.1.1-1
 - 修复 Wayland (Niri/KDE) 环境下的任务栏图标分离瑕疵，补齐 StartupWMClass 映射。
 
