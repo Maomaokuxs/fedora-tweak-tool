@@ -6,13 +6,15 @@ import re
 import zipfile
 import tarfile
 import shutil
-from datetime import datetime
+import struct  # 🌟 核心保留：用于解剖 Xcursor 二进制的 TOC 结构
+
+# 🌟 将所有 PySide6 依赖归装整齐，合并为一个干净的导入管线，杜绝重复与未定义报错
+from PySide6.QtCore import QFile, Qt  
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtGui import QPixmap, QImage, QPainter
 from PySide6.QtWidgets import (QApplication, QMessageBox, QComboBox, 
                                QPushButton, QLabel, QListWidget, QStackedWidget,
-                               QLineEdit, QFileDialog, QInputDialog)
-from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile
-from PySide6.QtGui import QPixmap, QImage, QPainter
+                               QLineEdit, QFileDialog, QInputDialog, QCheckBox) 
 
 class FedoraTweakApp:
     def __init__(self):
@@ -47,21 +49,51 @@ class FedoraTweakApp:
         ui_file.close()
 
         # =====================================================================
-        # 2. 🔒 保留原生标签页物理联动逻辑（一比一严格按顺序切页）
+        # 2. 🔒 保留原生标签页物理联动逻辑（金刚不坏：自适应多页流控中心）
         # =====================================================================
         self.nav_list = self.window.findChild(QListWidget, "nav_list")
         self.content_stack = self.window.findChild(QStackedWidget, "content_stack")
+        
+        # 🌟 增加极其暴力的自检报警，瞬间定位是否是改名导致的丢失！
+        if not self.nav_list:
+            print("[CRITICAL 致命错误] 找不到名为 'nav_list' 的左侧边栏！请去 Qt Designer 检查 objectName！")
+        if not self.content_stack:
+            print("[CRITICAL 致命错误] 找不到名为 'content_stack' 的右侧堆栈页面！请去 Qt Designer 检查 objectName！")
+
         if self.nav_list and self.content_stack:
-            self.nav_list.currentRowChanged.connect(self.content_stack.setCurrentIndex)
-            self.nav_list.setCurrentRow(0) 
+            def safe_page_switcher(row_index):
+                if row_index < 0 or row_index >= self.content_stack.count():
+                    print(f"[DEBUG 导航 警告] 触发了无效行号 {row_index}，右侧 Page 数量仅为 {self.content_stack.count()}")
+                    return
+                
+                # 1. 强行拨动右侧堆栈页面
+                self.content_stack.setCurrentIndex(row_index)
+                page_name = self.content_stack.currentWidget().objectName()
+                print(f"[DEBUG 导航 🚀] 边栏拨动 -> 强行切入第 {row_index} 页 ({page_name})")
+                
+                # 2. 🌟 真正的精准懒加载：只有当包含软件源列表的那个页面“被翻出来可见”时，才去疯狂读取硬盘配置！
+                if hasattr(self, "repo_list_widget") and self.repo_list_widget and self.repo_list_widget.isVisible():
+                    self.scan_and_render_system_repos()
+
+            self.nav_list.currentRowChanged.connect(safe_page_switcher)
 
         # =====================================================================
-        # 3. 绑定各面板 UI 组件
+        # 3. 🔒 核心状态机物理底板初始化
         # =====================================================================
+        self.system_themes_root = "/usr/share/grub/themes" 
+        self.detected_vendor = "Unknown"  
+        self.nvidia_driver_installed = False
+        self.vaapi_perfect = False       
+
+        # =====================================================================
+        # 4. 🎛️ 绑定各面板 UI 物理组件
+        # =====================================================================
+        # 时区组件
         self.combo = self.window.findChild(QComboBox, "timezone_combo")
         self.btn = self.window.findChild(QPushButton, "apply_btn")
         self.current_lbl = self.window.findChild(QLabel, "current_zone_lbl")
 
+        # GRUB 组件
         self.current_grub_lbl = self.window.findChild(QLabel, "current_grub_lbl")
         self.grub_path_edit = self.window.findChild(QLineEdit, "grub_path_edit")
         self.grub_browse_btn = self.window.findChild(QPushButton, "grub_browse_btn")
@@ -69,6 +101,7 @@ class FedoraTweakApp:
         self.grub_theme_combo = self.window.findChild(QComboBox, "grub_theme_combo")
         self.grub_refresh_btn = self.window.findChild(QPushButton, "grub_refresh_btn")
 
+        # 显卡编解码组件
         self.gpu_info_lbl = self.window.findChild(QLabel, "gpu_info_lbl")
         self.driver_status_lbl = self.window.findChild(QLabel, "driver_status_lbl")
         self.gpu_action_btn = self.window.findChild(QPushButton, "gpu_action_btn")
@@ -78,34 +111,25 @@ class FedoraTweakApp:
         self.cursor_path_edit = self.window.findChild(QLineEdit, "cursor_path_edit")
         self.cursor_browse_btn = self.window.findChild(QPushButton, "cursor_browse_btn")
         self.cursor_apply_btn = self.window.findChild(QPushButton, "cursor_apply_btn")
-        
-        # 🌟 1. 捞出你在 UI 里准备好的鼠标预览画布画框
         self.cursor_preview_lbl = self.window.findChild(QLabel, "cursor_preview_lbl")
         
-        # 🌟 2. 安全防呆初始化：如果画框存在，先给它刷一层纯透明底板，防止黑块挂载
+        # 动态软件源管理器组件
+        self.repo_list_widget = self.window.findChild(QListWidget, "repo_list_widget")
+
+        # 动态软件源管理器组件
+        self.repo_list_widget = self.window.findChild(QListWidget, "repo_list_widget")
+        # 👇 添加这一行来接管刷新按钮
+        self.repo_refresh_btn = self.window.findChild(QPushButton, "repo_refresh_btn")
+
+        # 🌟 鼠标预览图层安全防黑初始化
         if self.cursor_preview_lbl:
             canvas = QPixmap(128, 128)
-            from PySide6.QtCore import Qt  # 确保引入了 Qt 命名空间
-            canvas.fill(Qt.transparent)     # 填充为优雅的透明
+            canvas.fill(Qt.transparent)     
             self.cursor_preview_lbl.setPixmap(canvas)
 
         # =====================================================================
-        # 4. 初始化状态机与信号事件绑定
+        # 5. 🎚️ 焊接信号与槽映射通道
         # =====================================================================
-        self.system_themes_root = "/usr/share/grub/themes" 
-        self.detected_vendor = "Unknown"  
-        self.nvidia_driver_installed = False
-        self.vaapi_perfect = False       
-        
-        # 数据流初次盘点
-        self.init_timezone_list()
-        self.refresh_current_timezone()
-        self.refresh_current_grub_theme()  
-        self.refresh_local_themes_combo() 
-        self.detect_gpu_and_drivers()
-        self.refresh_cursor_themes_combo() # 启动时仅扫描一次鼠标
-        
-        # 信号槽管线焊接
         if self.btn: self.btn.clicked.connect(self.apply_timezone)
         if self.grub_browse_btn: self.grub_browse_btn.clicked.connect(self.smart_browse_grub)
         if self.grub_refresh_btn: self.grub_refresh_btn.clicked.connect(self.refresh_local_themes_combo)
@@ -113,12 +137,31 @@ class FedoraTweakApp:
         if self.gpu_action_btn: self.gpu_action_btn.clicked.connect(self.apply_gpu_codec_fix)
         if self.cursor_browse_btn: self.cursor_browse_btn.clicked.connect(self.smart_browse_cursor)
         if self.cursor_apply_btn: self.cursor_apply_btn.clicked.connect(self.dispatch_cursor_apply)
-
-        # 🌟 3. 组件管线焊接：当用户在下拉选单里切换不同鼠标主题时，瞬间触发真正的逆向预览引擎
+        if self.repo_list_widget:
+            self.repo_list_widget.itemClicked.connect(self.dispatch_repo_toggle_on_click)
+               
+        # 🌟 动态断线重连接口：这里不需要强行给 repo_list_widget 挂在 init 中连接 itemChanged 信号
+        # 因为我们的 scan_and_render_system_repos 会在每次刷新完毕时自动把监听钩子精准挂上！
         if self.cursor_theme_combo:
             self.cursor_theme_combo.currentIndexChanged.connect(self.update_cursor_preview)
+        
+        # 🌟 软件源列表刷新按钮连线：点击就直接呼叫底层的全盘扫描函数！
+        if self.repo_refresh_btn:
+            self.repo_refresh_btn.clicked.connect(self.scan_and_render_system_repos)
 
-        # 🌟 4. 破壁启动：在 __init__ 的最后一行，主动调用一次预览刷新，让启动时默认锁定的主题立刻出图！
+        # =====================================================================
+        # 6. 🚀 全面拉起数据流冷盘点
+        # =====================================================================
+        self.init_timezone_list()
+        self.refresh_current_timezone()
+        self.refresh_current_grub_theme()  
+        self.refresh_local_themes_combo() 
+        self.detect_gpu_and_drivers()
+        self.refresh_cursor_themes_combo() 
+        
+        # 强行拨动至第 0 页，触发初始画面渲染
+        if self.nav_list:
+            self.nav_list.setCurrentRow(0)
         self.update_cursor_preview()
 
     # ================= 时区逻辑区 =================
@@ -658,7 +701,139 @@ class FedoraTweakApp:
                 }
             """)
             self.cursor_preview_lbl.setText(f"🎨\n{selected_theme}\n[无标准素材]")
-    
+
+
+   # ================= 动态软件源核心管理区（超级 Debug 增强版） =================
+    def scan_and_render_system_repos(self):
+        """
+        🔍 全动态清盘系统源：剥离一切状态锁，纯净平铺渲染
+        """
+        import os
+        from PySide6.QtWidgets import QListWidgetItem
+        from PySide6.QtCore import Qt
+
+        if not self.repo_list_widget: return
+        
+        # 因为改成了 itemClicked 监听，这里清空和装载数据时绝对不会引发任何事件自扰
+        self.repo_list_widget.clear()
+        
+        # 1. 强行置顶注入【虚拟源节点】：RPM Fusion 总闸
+        has_fusion = os.path.exists("/etc/yum.repos.d/rpmfusion-free.repo")
+        fusion_item = QListWidgetItem("📦 RPM Fusion 自由与非自由官方源合集\n[rpmfusion-all-bundle]")
+        fusion_item.setData(Qt.UserRole, "SPECIAL_VIRTUAL_RPM_FUSION")
+        fusion_item.setCheckState(Qt.Checked if has_fusion else Qt.Unchecked)
+        self.repo_list_widget.addItem(fusion_item)
+
+        # 2. 扫描底层真实的常规物理源
+        repo_dir = "/etc/yum.repos.d"
+        if os.path.exists(repo_dir): 
+            for file_name in sorted(os.listdir(repo_dir)):
+                if not file_name.endswith(".repo"): continue
+                if file_name.startswith("rpmfusion-"): continue
+                
+                full_path = os.path.join(repo_dir, file_name)
+                try:
+                    with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    
+                    sections = re.split(r'^\[', content, flags=re.MULTILINE)
+                    for section in sections:
+                        if not section.strip(): continue
+                        
+                        id_match = re.match(r'^([^\]\n]+)\]', section)
+                        if not id_match: continue
+                        repo_id = id_match.group(1).strip()
+                        
+                        name_match = re.search(r'^\s*name\s*=\s*(.+)$', section, re.MULTILINE)
+                        enabled_match = re.search(r'^\s*enabled\s*=\s*(.+)$', section, re.MULTILINE)
+                        
+                        repo_name = name_match.group(1).strip() if name_match else repo_id
+                        is_enabled = False if (enabled_match and enabled_match.group(1).strip() in ["0", "false", "False"]) else True
+                        
+                        item = QListWidgetItem()
+                        item.setText(f"{repo_name}\n[{repo_id}]")
+                        item.setData(Qt.UserRole, repo_id)
+                        item.setCheckState(Qt.Checked if is_enabled else Qt.Unchecked)
+                        
+                        self.repo_list_widget.addItem(item)
+                except Exception as e:
+                    print(f"[DEBUG 软件源 警告] 解析 {file_name} 发生轻微断层: {e}")
+
+    def dispatch_repo_toggle_on_click(self, item):
+        """
+        ⚡ 物理级文本改写控制中心（彻底治愈冒号歧义、Polkit 连环命令拒绝与命令无效）
+        """
+        import os
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QMessageBox
+        
+        repo_id = item.data(Qt.UserRole)
+        is_now_checked = (item.checkState() == Qt.Checked)
+        action_word = "enable" if is_now_checked else "disable"
+        target_val = "1" if is_now_checked else "0"
+        
+        print(f"\n==================== [🚀 HARDWARE LEVEL REPO WRITE] ====================")
+        print(f"[⚙️ 目标] RepoID: {repo_id} | 动作: {action_word}")
+        
+        # 1. 🌟 虚拟源处理：多命令严格包装，完美治愈 127 授权错误
+        if repo_id == "SPECIAL_VIRTUAL_RPM_FUSION":
+            if is_now_checked:
+                shell_script = "sh -c 'dnf5 install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-44.noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-44.noarch.rpm && dnf5 update -y --refresh'"
+            else:
+                shell_script = "sh -c 'dnf5 remove -y rpmfusion-free-release rpmfusion-nonfree-release && rm -f /etc/yum.repos.d/rpmfusion-*.repo'"
+            cmd = ["pkexec", "sh", "-c", shell_script]
+            
+        # 2. 🌟 常规源处理：物理级 sed 精准改写，彻底秒杀 dnf5 冒号 RepoID 无法识别卡死的顽疾
+        else:
+            # 暴力搜寻究竟是哪个 .repo 文件里装着这个 RepoID
+            repo_dir = "/etc/yum.repos.d"
+            target_repo_file = None
+            
+            if os.path.exists(repo_dir):
+                for file_name in os.listdir(repo_dir):
+                    if not file_name.endswith(".repo"): continue
+                    file_path = os.path.join(repo_dir, file_name)
+                    try:
+                        with open(file_path, "r", errors="ignore") as f:
+                            if f"[{repo_id}]" in f.read():
+                                target_repo_file = file_path
+                                break
+                    except Exception: pass
+            
+            if not target_repo_file:
+                QMessageBox.critical(self.window, "错误", f"在系统目录中找不到对应的源配置文件！")
+                return
+                
+            print(f"[⚙️ 命中物理路径]: {target_repo_file}")
+            
+            # 现代化极其硬核的 sed 语法：匹配到 [repo_id] 后，在其下方范围内将 enabled=X 替换为最新状态
+            # 如果该源原本没有显式写出 enabled=，则利用命令自动在块末尾补齐
+            shell_script = f"""
+            sed -i '/\\[{repo_id}\\]/,/^\\[/{{ /^[[:space:]]*enabled[[:space:]]*=/d }}' "{target_repo_file}"
+            sed -i '/\\[{repo_id}\\]/a enabled={target_val}' "{target_repo_file}"
+            """
+            cmd = ["pkexec", "sh", "-c", shell_script]
+            print(f"[⚙️ 执行物理改写指令]")
+
+        try:
+            self.repo_list_widget.setEnabled(False)
+            QApplication.processEvents()
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                error_info = result.stderr.strip() or result.stdout.strip() or "授权被取消"
+                raise RuntimeError(error_info)
+            else:
+                QMessageBox.information(self.window, "操作成功", f"软件源状态已同步写入系统底座！")
+        except Exception as e:
+            QMessageBox.critical(self.window, "改写失败", f"底层改写未完成:\n{e}")
+        finally:
+            self.repo_list_widget.setEnabled(True)
+            # 满血刷盘自检
+            self.scan_and_render_system_repos()
+            print(f"========================================================================\n")
+
     
 if __name__ == "__main__":
     app = QApplication(sys.argv)
