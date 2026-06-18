@@ -11,13 +11,13 @@ class RepoManager:
         print("[DEBUG 软件源] RepoManager 模块已挂载，大管家权限交接完毕。")
 
     def scan_and_render_system_repos(self):
-        """🔍 全动态清盘系统源：双列表独立精细化渲染（注入动态宏滤网，消灭 $releasever）"""
+        """🔍 全动态清盘系统源：双列表独立精细化渲染（注入动态宏滤网，同步 DNF5 大脑状态）"""
         if not self.ctx.repo_list_widget: return
         self.ctx._is_loading_repos = True
         
         print("\n==================== [🔍 SYSTEM REPOS SCAN START] ====================")
         
-        # 🌟 核心突破：前置嗅探当前系统的真实版本与架构，准备宏替换存根
+        # 🌟 核心突破 1：前置嗅探当前系统的真实版本与架构，准备宏替换存根
         current_releasever = "44"  # 默认兜底版本
         current_basearch = "x86_64" # 默认兜底架构
         
@@ -35,6 +35,24 @@ class RepoManager:
             print(f"[DEBUG 软件源] 成功捕获系统宏环境 -> $releasever={current_releasever} | $basearch={current_basearch}")
         except Exception as env_err:
             print(f"[DEBUG 软件源 警告] 嗅探系统宏环境失败，启用静态硬核兜底: {env_err}")
+
+        # 🌟 核心突破 2：绕过物理文件欺骗，直接向 DNF5 大脑索要当前绝对激活的源名单！
+        print("[DEBUG 软件源] 正在向 DNF5 底层索要真实激活清单...")
+        true_enabled_repos = set()
+        try:
+            # --enabled 参数只会吐出真实启用的仓库（无视配置文件里的护驾参数）
+            repolist_cmd = subprocess.run(["dnf5", "repolist", "--enabled"], capture_output=True, text=True)
+            for line in repolist_cmd.stdout.split("\n"):
+                line = line.strip()
+                # 过滤空行、表头警告等杂音 (兼容中英文环境)
+                if not line or line.lower().startswith("repo id") or "仓库 id" in line.lower() or line.startswith("="): 
+                    continue
+                parts = line.split()
+                if parts:
+                    true_enabled_repos.add(parts[0]) # 第一列永远是精准的 RepoID
+            print(f"[DEBUG 软件源] DNF5 真实状态同步完成，全系统共 {len(true_enabled_repos)} 个源处于激活状态。")
+        except Exception as e:
+            print(f"[DEBUG 软件源 警告] 真实状态抓取失败，将退回文件解析模式: {e}")
 
         # 🌟 1. 清空并纯净物理渲染【当前系统源列表】
         self.ctx.repo_list_widget.clear()
@@ -58,18 +76,27 @@ class RepoManager:
                         repo_id = id_match.group(1).strip()
                         
                         name_match = re.search(r'^\s*name\s*=\s*(.+)$', section, re.MULTILINE)
-                        enabled_match = re.search(r'^\s*enabled\s*=\s*(.+)$', section, re.MULTILINE)
-                        
                         repo_name = name_match.group(1).strip() if name_match else repo_id
                         
-                        # 🌟 核心拦截清洗：将原生文本里的恶心变量名，原地强行烫平为高清真实版本号
+                        # 核心拦截清洗：将原生文本里的恶心变量名，原地强行烫平为高清真实版本号
                         repo_name = repo_name.replace("$releasever", current_releasever)
                         repo_name = repo_name.replace("$basearch", current_basearch)
-                        # 顺手把可能存在的复杂大括号变体也顺便洗掉
                         repo_name = repo_name.replace("${releasever}", current_releasever)
                         repo_name = repo_name.replace("${basearch}", current_basearch)
-                        
-                        is_enabled = False if (enabled_match and enabled_match.group(1).strip() in ["0", "false", "False"]) else True
+
+                        # =========================================================
+                        # 🌟 终极裁决：不再信任文件里的 enabled 文本，直接核对 DNF5 的记忆！
+                        # =========================================================
+                        if true_enabled_repos:
+                            is_enabled = (repo_id in true_enabled_repos)
+                        else:
+                            # 兜底旧逻辑（仅在 DNF5 命令崩溃时使用）
+                            enabled_matches = re.findall(r'^\s*enabled\s*=\s*(.+)$', section, re.MULTILINE)
+                            if enabled_matches:
+                                last_enabled = enabled_matches[-1].strip() 
+                                is_enabled = False if last_enabled in ["0", "false", "False"] else True
+                            else:
+                                is_enabled = True
                         
                         item = QListWidgetItem(f"{repo_name}\n[{repo_id}]")
                         item.setData(Qt.UserRole, repo_id)
@@ -156,12 +183,11 @@ class RepoManager:
                 shell_script = "dnf5 remove -y rpmfusion-free-release rpmfusion-nonfree-release && rm -f /etc/yum.repos.d/rpmfusion-*.repo"
         elif rec_id == "REC_GOOGLE_CHROME":
             if is_now_checked:
-                shell_script = "dnf5 config-manager --set-enabled google-chrome || (echo -e '[google-chrome]\\nname=google-chrome\\nbaseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64\\nenabled=1\\ngpgcheck=1\\ngpgkey=https://dl.google.com/linux/linux_signing_key.pub' > /etc/yum.repos.d/google-chrome.repo)"
+                shell_script = "dnf5 config-manager enable google-chrome || (echo -e '[google-chrome]\\nname=google-chrome\\nbaseurl=http://dl.google.com/linux/chrome/rpm/stable/x86_64\\nenabled=1\\ngpgcheck=1\\ngpgkey=https://dl.google.com/linux/linux_signing_key.pub' > /etc/yum.repos.d/google-chrome.repo)"
             else:
                 shell_script = "rm -f /etc/yum.repos.d/google-chrome.repo"
         elif rec_id == "REC_VSCODE":
             if is_now_checked:
-                # 🌟 核心修复：去掉了冗余的 sh -c 嵌套，并把 echo 内部的引号改为单引号，完美融入提权通道的双引号包围圈
                 shell_script = "echo -e '[code]\\nname=Visual Studio Code\\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\\nenabled=1\\ngpgcheck=1\\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc' > /etc/yum.repos.d/vscode.repo"
             else:
                 shell_script = "rm -f /etc/yum.repos.d/vscode.repo"
@@ -183,7 +209,7 @@ class RepoManager:
             print("========================================================================\n")
 
     def dispatch_repo_toggle_on_click(self, item):
-        """⚡ 本地物理源专属控制管线（纯 Python 物理注入）"""
+        """⚡ 本地物理源专属控制管线（全面回归 DNF5 官方 API，彻底消灭缓存脱节）"""
         if getattr(self.ctx, "_is_loading_repos", False): return
         
         repo_id = item.data(Qt.UserRole)
@@ -193,76 +219,23 @@ class RepoManager:
         print(f"\n==================== [🚀 LOCAL HARDWARE REPO WRITE] ====================")
         print(f"[⚙️ 目标物理源] RepoID: {repo_id} | 动作: {action_word}")
         
-        repo_dir = "/etc/yum.repos.d"
-        target_repo_file = None
-        if os.path.exists(repo_dir):
-            for file_name in os.listdir(repo_dir):
-                if not file_name.endswith(".repo"): continue
-                file_path = os.path.join(repo_dir, file_name)
-                try:
-                    with open(file_path, "r", errors="ignore") as f:
-                        if f"[{repo_id}]" in f.read():
-                            target_repo_file = file_path
-                            break
-                except Exception: pass
-        
-        if not target_repo_file:
-            print(f"[DEBUG 物理源 错误] 遍历了 {repo_dir}，但找不到包含 [{repo_id}] 的配置文件！")
-            QMessageBox.critical(self.ctx.window, "错误", f"在系统目录中找不到对应的源配置文件！")
-            return
-            
-        print(f"[⚙️ 命中物理阵地]: {target_repo_file}")
+        # 🌟 终极核心重构：彻底废弃手工沙盒重写！
+        # 直接利用 DNF5 官方指令，它不仅会改写文件，还会自动清除冲突参数并通知系统底层缓存变更！
+        shell_script = f"dnf5 config-manager {action_word} '{repo_id}'"
 
         try:
             self.ctx.repo_list_widget.setEnabled(False)
             QApplication.processEvents()
 
-            print(f"[DEBUG 物理源] 正在将目标文件读入内存沙盒...")
-            with open(target_repo_file, "r", encoding="utf-8", errors="ignore") as f:
-                lines = f.readlines()
-
-            new_lines = []
-            inside_target_section = False
-            enabled_line_written = False
-
-            for line in lines:
-                striped = line.strip()
-                if striped.startswith("[") and striped.endswith("]"):
-                    if inside_target_section and not enabled_line_written:
-                        new_lines.append(f"enabled={'1' if is_now_checked else '0'}\n")
-                        enabled_line_written = True
-                    
-                    if striped == f"[{repo_id}]":
-                        inside_target_section = True
-                        enabled_line_written = False
-                    else:
-                        inside_target_section = False
-
-                if inside_target_section and striped.startswith("enabled"):
-                    new_lines.append(f"enabled={'1' if is_now_checked else '0'}\n")
-                    enabled_line_written = True
-                    continue
-
-                new_lines.append(line)
-
-            if inside_target_section and not enabled_line_written:
-                new_lines.append(f"enabled={'1' if is_now_checked else '0'}\n")
-
-            sandbox_tmp = f"/tmp/tweak_repo_rewrite.tmp"
-            with open(sandbox_tmp, "w", encoding="utf-8") as f:
-                f.writelines(new_lines)
-            
-            print(f"[DEBUG 物理源] 内存重构完毕，已写入临时沙盒: {sandbox_tmp}")
-
-            # 🌟 核心安全修正：覆盖系统配置文件后，强制校准所有权和权限位，防止 DNF 拒绝读取！
-            shell_script = f"cp -f '{sandbox_tmp}' '{target_repo_file}' && chown root:root '{target_repo_file}' && chmod 644 '{target_repo_file}' && rm -f '{sandbox_tmp}'"
+            # 走统一提权通道执行 DNF 官方命令
             self.verify_and_run_sudo(shell_script)
             
             QMessageBox.information(self.ctx.window, "提示", "配置成功")
 
         except Exception as e:
+            # 如果中途取消密码或执行失败，强行将 UI 的勾选状态拨回原样
             item.setCheckState(Qt.Unchecked if is_now_checked else Qt.Checked)
-            QMessageBox.critical(self.ctx.window, "改写失败", f"文件安全改写未完成:\n{e}")
+            QMessageBox.critical(self.ctx.window, "改写失败", f"软件源状态切换未完成:\n{e}")
             
         finally:
             self.ctx.repo_list_widget.setEnabled(True)
