@@ -1,5 +1,5 @@
 Name:           fedora-tweak-tool
-Version:        1.1.4
+Version:        1.1.5
 Release:        1%{?dist}
 Summary:        基于 PySide6 的简易 Fedora 系统调节工具
 
@@ -60,6 +60,12 @@ echo "StartupWMClass=fedora-tweak-tool" >> %{buildroot}%{_datadir}/applications/
 %{_datadir}/applications/fedora-tweak-tool.desktop
 
 %changelog
+* Mon Jun 22 2026 biyuan <biyuan@fedoraproject.org> - 1.1.5-1
+- 新增 Fcitx5 输入法主题独立管理面板，支持本地主题扫描、一键切换与压缩包导入。
+- 重写 Fcitx 页面 UI（布局管理器替代绝对定位），修复页面控件与鼠标页面的命名冲突。
+- 在 app.py 中正式接入 FcitxManager 模块并完成冷启动渲染。
+- 增强深色主题独立选择与系统配色自动切换开关，重构 classicui.conf 配置读写引擎。
+
 * Thu Jun 18 2026 biyuan <biyuan@fedoraproject.org> - 1.1.4-1
 - 【重磅】完成项目的全盘模块化低耦合解耦改造，正式确立大管家+子业务集群架构。
 - 升级软件源扫描核心，引入 `rpm -E` 底层求值引擎，完美清洗并烫平 `$releasever` 及 `$basearch` 原生环境变量，终结 UI 乱码变体。
